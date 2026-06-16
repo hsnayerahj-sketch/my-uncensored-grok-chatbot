@@ -43,17 +43,16 @@ def chat_with_image(message, history, image):
             messages.append({"role": "user", "content": message})
         
         response = client.chat.completions.create(
-            model="grok-4.3",   # ✅ Correct current model
+            model="grok-4.3",
             messages=messages,
             max_tokens=2048,
             temperature=0.85,
         )
         return response.choices[0].message.content
-        
     except Exception as e:
-        return f"❌ Error: {str(e)[:200]}"
+        return f"❌ Error: {str(e)[:250]}"
 
-# ================== Gradio UI ==================
+# ================== UI ==================
 with gr.Blocks(title="Uncensored Grok Chatbot", theme=gr.themes.Soft()) as demo:
     gr.Markdown("# 🦾 Uncensored Grok AI Chatbot\n**With Image Support • No Limits**")
     
@@ -73,7 +72,6 @@ with gr.Blocks(title="Uncensored Grok Chatbot", theme=gr.themes.Soft()) as demo:
             image_input = gr.Image(type="pil", label="Upload image (optional)")
             gr.Button("Clear Image", variant="secondary").click(lambda: None, None, image_input)
 
-    # Functions
     def user_message(user_msg, history, img):
         return "", history + [[user_msg, None]], img
 
@@ -85,12 +83,12 @@ with gr.Blocks(title="Uncensored Grok Chatbot", theme=gr.themes.Soft()) as demo:
         history[-1][1] = bot_reply
         return history, None
 
-    # Events
     submit.click(user_message, [msg, chatbot, image_input], [msg, chatbot, image_input])\
           .then(bot_response, [chatbot, image_input], [chatbot, image_input])
     
     msg.submit(user_message, [msg, chatbot, image_input], [msg, chatbot, image_input])\
        .then(bot_response, [chatbot, image_input], [chatbot, image_input])
 
+# IMPORTANT: Simple launch for Hugging Face Spaces
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch()
