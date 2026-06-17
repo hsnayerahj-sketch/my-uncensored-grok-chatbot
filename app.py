@@ -1,27 +1,24 @@
+
 import streamlit as st
 from PIL import Image
 import base64
 from io import BytesIO
-from dotenv import load_dotenv
 import os
 
-load_dotenv()
+# ====================== API KEY SETUP (for Streamlit Cloud) ======================
+# You can set this in Streamlit Cloud Secrets instead of .env
 
 st.set_page_config(page_title="Uncensored Grok", page_icon="🖤", layout="centered")
 
-@st.cache_resource(show_spinner="Loading Grok-4.3... Please wait (first time only)")
+@st.cache_resource(show_spinner="Loading Grok-4.3... (first time only)")
 def load_model():
-    try:
-        from langchain_xai import ChatXAI
-        return ChatXAI(
-            model="grok-4.3",
-            temperature=0.85,
-            max_tokens=2048,
-            streaming=True,
-        )
-    except Exception as e:
-        st.error(f"Failed to load model: {e}")
-        st.stop()
+    from langchain_xai import ChatXAI
+    return ChatXAI(
+        model="grok-4.3",
+        temperature=0.85,
+        max_tokens=2048,
+        streaming=True,
+    )
 
 model = load_model()
 
@@ -33,9 +30,9 @@ def image_to_base64(image: Image.Image) -> str:
     image.save(buffered, format="JPEG", quality=80)
     return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
-# UI
+# ====================== UI ======================
 st.title("🖤 Uncensored Grok Chatbot")
-st.caption("Grok-4.3 • Vision • Streaming")
+st.caption("Grok-4.3 • Vision • Streaming • No Limits")
 
 with st.sidebar:
     if st.button("🗑️ Clear Chat"):
@@ -103,6 +100,5 @@ if prompt := st.chat_input("What do you want? (no limits)"):
                 message_placeholder.markdown(full_response)
             except Exception as e:
                 st.error(f"Error: {str(e)}")
-                full_response = "Sorry, something went wrong."
 
     st.session_state.messages.append({"role": "assistant", "content": full_response})
