@@ -1,113 +1,90 @@
 import streamlit as st
 from PIL import Image
-import torch
+import requests
 from io import BytesIO
 import re
 
-st.set_page_config(page_title="Uncensored NSFW FLUX Chatbot", page_icon="🖤", layout="centered")
-
-@st.cache_resource(show_spinner="Loading Local FLUX.1-Schnell (Uncensored)...")
-def load_flux():
-    from diffusers import FluxPipeline
-    pipe = FluxPipeline.from_pretrained(
-        "black-forest-labs/FLUX.1-schnell",
-        torch_dtype=torch.bfloat16,
-    )
-    pipe.enable_model_cpu_offload()
-    return pipe
-
-pipe = load_flux()
+st.set_page_config(page_title="Uncensored NSFW Chatbot", page_icon="🖤", layout="centered")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Strong NSFW prompt enhancer
+# Strong NSFW enhancer
 def enhance_prompt(raw_prompt: str) -> str:
-    if not raw_prompt:
-        return "beautiful woman, nude, detailed skin, masterpiece"
-    
     prompt = re.sub(r'\s+', ' ', raw_prompt.strip())
-    
-    # Auto add enhancers for NSFW
-    nsfw_enhancers = ("masterpiece, best quality, ultra detailed, 8k, realistic skin texture, "
-                     "intricate details, sharp focus, cinematic lighting")
-    
-    if len(prompt.split()) < 15:
-        prompt += f", {nsfw_enhancers}"
-    
+    nsfw_boost = "masterpiece, best quality, ultra detailed, realistic skin, detailed anatomy, 8k"
+    if len(prompt.split()) < 12:
+        prompt += f", {nsfw_boost}"
     return prompt.strip()
 
-# ====================== UNCENSORED LOCAL FLUX ======================
+# Fast Free NSFW Image Generation
 def generate_image(prompt: str, num_images: int = 1):
-    enhanced_prompt = enhance_prompt(prompt)
-    st.info(f"**Prompt:** {enhanced_prompt[:200]}...")
+    enhanced = enhance_prompt(prompt)
+    st.info(f"**Generating:** {enhanced[:150]}...")
 
-    with st.spinner("🎨 Generating uncensored image (NSFW + Nudity allowed)..."):
+    with st.spinner("🎨 Generating uncensored NSFW image..."):
         for i in range(num_images):
             try:
-                image = pipe(
-                    prompt=enhanced_prompt,
-                    num_inference_steps=6,
-                    guidance_scale=3.5,
-                    height=1024,
-                    width=1024,
-                    max_sequence_length=512,
-                ).images[0]
-
-                st.image(image, caption=f"✅ NSFW Image {i+1}", use_column_width=True)
-
-                buf = BytesIO()
-                image.save(buf, format="PNG")
-                st.download_button(
-                    label="⬇️ Download Image",
-                    data=buf.getvalue(),
-                    file_name=f"nsfw_flux_{i+1}.png",
-                    mime="image/png",
-                    use_container_width=True
+                response = requests.post(
+                    "https://api.puter.com/ai/image",
+                    json={
+                        "model": "black-forest-labs/flux-schnell",
+                        "prompt": enhanced,
+                        "width": 1024,
+                        "height": 1024,
+                        "steps": 5,
+                        "disable_safety_checker": True
+                    },
+                    timeout=60
                 )
-                st.divider()
+
+                if response.status_code == 200:
+                    data = response.json()
+                    image_url = data.get("url") or data.get("image_url")
+                    if image_url:
+                        img = Image.open(BytesIO(requests.get(image_url).content))
+                        st.image(img, caption=f"✅ NSFW Image {i+1}", use_column_width=True)
+                        
+                        buf = BytesIO()
+                        img.save(buf, format="PNG")
+                        st.download_button(
+                            "⬇️ Download Image",
+                            buf.getvalue(),
+                            f"nsfw_{i+1}.png",
+                            "image/png",
+                            use_container_width=True
+                        )
+                        st.divider()
+                else:
+                    st.error("Service busy. Try again in 10 seconds.")
             except Exception as e:
-                st.error(f"Error: {str(e)}")
+                st.error(f"Error: {str(e)[:100]}")
 
 # ====================== UI ======================
-st.title("🖤 Fully Uncensored NSFW FLUX Chatbot")
-st.caption("Nudity • NSFW • No Restrictions • Local")
+st.title("🖤 Fully Uncensored NSFW Chatbot")
+st.caption("Nudity & NSFW Allowed • No Limits")
 
 with st.sidebar:
-    num_images = st.slider("Number of images", 1, 4, 1)
+    num_images = st.slider("Number of images", 1, 3, 1)
     if st.button("🗑️ Clear Chat"):
         st.session_state.messages = []
         st.rerun()
 
-uploaded_file = st.file_uploader("Reference image (optional)", type=["png", "jpg", "jpeg", "webp"])
-reference_image = Image.open(uploaded_file) if uploaded_file else None
-if reference_image:
-    st.image(reference_image, caption="Reference Image")
-
-# Chat History
+# Chat
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
-        if msg.get("images"):
-            for img in msg.get("images", []):
-                st.image(img)
 
-if prompt := st.chat_input("Describe anything... (nudity, nsfw, no limits)"):
+if prompt := st.chat_input("Describe anything (nudity, nsfw, erotic, etc.)"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     
     with st.chat_message("user"):
         st.markdown(prompt)
-        if reference_image:
-            st.image(reference_image)
 
     with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        full_response = "Generating uncensored image for you..."
-        message_placeholder.markdown(full_response)
+        full_response = "Generating your image..."
+        st.write(full_response)
         
-        try:
-            generate_image(prompt, num_images)
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
+        generate_image(prompt, num_images)
     
     st.session_state.messages.append({"role": "assistant", "content": full_response})
