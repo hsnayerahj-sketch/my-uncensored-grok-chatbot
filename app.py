@@ -18,7 +18,7 @@ def load_model():
         temperature=0.85,
         max_tokens=2048,
         streaming=True,
-        groq_api_key=os.getenv("GROQ_API_KEY"),
+        groq_api_key="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",
     )
 
 model = load_model()
@@ -26,66 +26,55 @@ model = load_model()
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# ====================== PROMPT SIMPLIFIER (Fixes 401 Error) ======================
-def simplify_prompt(raw_prompt: str, max_length: int = 180) -> str:
+# ====================== PROMPT SIMPLIFIER ======================
+def simplify_prompt(raw_prompt: str, max_length: int = 200) -> str:
     if not raw_prompt:
-        return "beautiful woman, masterpiece, best quality, highly detailed"
+        return "masterpiece, best quality, highly detailed"
     
     prompt = re.sub(r'\s+', ' ', raw_prompt.strip())
-    
-    # Truncate intelligently
     if len(prompt) > max_length:
         prompt = prompt[:max_length].rsplit(' ', 1)[0]
     
-    # Add FLUX-friendly boosters
-    enhancers = ", masterpiece, best quality, highly detailed, sharp focus, 8k"
+    enhancers = ", masterpiece, best quality, highly detailed, sharp focus"
     if not any(x in prompt.lower() for x in ["quality", "detail", "masterpiece"]):
         prompt += enhancers
-    
     return prompt.strip()
 
-# ====================== IMAGE GENERATION ======================
+# ====================== FREE IMAGE GENERATION (Hugging Face Public) ======================
 def generate_image(prompt: str):
     simple_prompt = simplify_prompt(prompt)
-    st.info(f"**Using simplified prompt:** {simple_prompt[:120]}...")  # for debugging
+    st.info(f"**Generating:** {simple_prompt[:100]}...")
     
-    with st.spinner("🎨 Generating uncensored image with FLUX..."):
+    with st.spinner("🎨 Generating image with FLUX (Free Public Endpoint)..."):
         try:
-            API_URL = "https://api.together.xyz/v1/images/generations"
+            API_URL = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell"
+            headers = {}  # No token needed for public endpoint
             
             payload = {
-                "model": "black-forest-labs/FLUX.1-schnell-Free",   # Better for free tier
-                "prompt": simple_prompt,
-                "width": 1024,
-                "height": 768,
-                "steps": 8,          # Schnell works great with low steps
-                "n": 1
+                "inputs": simple_prompt,
+                "parameters": {
+                    "num_inference_steps": 15,
+                    "height": 768,
+                    "width": 1024
+                }
             }
             
-            headers = {
-                "Authorization": f"Bearer {os.getenv('TOGETHER_API_KEY')}",
-                "Content-Type": "application/json"
-            }
-            
-            response = requests.post(API_URL, json=payload, headers=headers)
+            response = requests.post(API_URL, headers=headers, json=payload)
             
             if response.status_code == 200:
-                data = response.json()
-                image_url = data["data"][0]["url"]
-                image = Image.open(requests.get(image_url, stream=True).raw)
+                image = Image.open(BytesIO(response.content))
                 st.image(image, caption="✅ Generated Image", use_column_width=True)
                 return image
             else:
-                st.error(f"Generation failed ({response.status_code}): {response.text[:200]}")
-                st.info("Try a shorter, more direct description. Free tier can be rate-limited.")
+                st.error(f"Failed ({response.status_code}). The free endpoint is busy. Try again in 10-30 seconds.")
                 return None
         except Exception as e:
-            st.error(f"Image generation error: {str(e)}")
+            st.error(f"Image service error: {str(e)}")
             return None
 
 # ====================== UI ======================
 st.title("🖤 Uncensored Chatbot + Image Generator")
-st.caption("Llama 3.3 + Free FLUX via Together.ai")
+st.caption("Llama 3.3 + Free FLUX (Public)")
 
 with st.sidebar:
     if st.button("🗑️ Clear Chat"):
@@ -93,7 +82,9 @@ with st.sidebar:
         st.rerun()
 
 # Reference Image
-uploaded_file = st.file_uploader("Attach reference image (optional)", type=["png", "jpg", "jpeg", "webp"])
+uploaded_file = st.file_uploader("Attach reference image (optional)", 
+                                 type=["png", "jpg", "jpeg", "webp"])
+
 reference_image = None
 if uploaded_file:
     reference_image = Image.open(uploaded_file)
@@ -135,20 +126,21 @@ if prompt := st.chat_input("What do you want? (no limits)"):
                 user_content = prompt
                 if reference_image:
                     user_content += "\n\n[User attached a reference image for style]"
+                
                 messages.append({"role": "user", "content": user_content})
-
+                
                 for chunk in model.stream(messages):
                     if chunk.content:
                         full_response += chunk.content
                         message_placeholder.markdown(full_response + "▌")
                 
                 message_placeholder.markdown(full_response)
-
+                
                 if "GENERATE_IMAGE:" in full_response:
                     img_prompt = full_response.split("GENERATE_IMAGE:")[-1].strip()
                     generate_image(img_prompt)
                     
             except Exception as e:
                 st.error(f"Error: {str(e)}")
-    
+
     st.session_state.messages.append({"role": "assistant", "content": full_response})
