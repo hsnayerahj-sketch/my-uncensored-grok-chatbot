@@ -6,7 +6,7 @@ import os
 
 st.set_page_config(page_title="Uncensored Chatbot", page_icon="🖤", layout="centered")
 
-@st.cache_resource(show_spinner="Loading Llama 3.1 via Groq (free)...")
+@st.cache_resource(show_spinner="Loading Llama 3.3 70B via Groq (free)...")
 def load_model():
     from langchain_groq import ChatGroq
     
@@ -17,7 +17,7 @@ def load_model():
         st.stop()
     
     return ChatGroq(
-        model="llama-3.1-70b-versatile",
+        model="llama-3.3-70b-versatile",   # ← Updated to current model
         temperature=0.85,
         max_tokens=2048,
         streaming=True,
@@ -36,7 +36,7 @@ def image_to_base64(image: Image.Image) -> str:
 
 # ====================== UI ======================
 st.title("🖤 Uncensored Chatbot")
-st.caption("Llama 3.1 70B via Groq • Free • Fast • Vision")
+st.caption("Llama 3.3 70B via Groq • Free • Fast • Vision")
 
 with st.sidebar:
     if st.button("🗑️ Clear Chat"):
