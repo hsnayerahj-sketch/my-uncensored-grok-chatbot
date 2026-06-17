@@ -5,19 +5,23 @@ import base64
 from io import BytesIO
 import os
 
-# ====================== API KEY SETUP (for Streamlit Cloud) ======================
-# You can set this in Streamlit Cloud Secrets instead of .env
-
 st.set_page_config(page_title="Uncensored Grok", page_icon="🖤", layout="centered")
 
-@st.cache_resource(show_spinner="Loading Grok-4.3... (first time only)")
+@st.cache_resource(show_spinner="Loading Grok AI... (first time only)")
 def load_model():
     from langchain_xai import ChatXAI
+    api_key = st.secrets.get("XAI_API_KEY") or os.getenv("XAI_API_KEY")
+    
+    if not api_key:
+        st.error("XAI_API_KEY is missing. Please add it in Streamlit Secrets.")
+        st.stop()
+    
     return ChatXAI(
-        model="grok-4.3",
+        model="grok-4",
         temperature=0.85,
         max_tokens=2048,
         streaming=True,
+        xai_api_key=api_key,      # Explicitly passing key
     )
 
 model = load_model()
@@ -32,7 +36,7 @@ def image_to_base64(image: Image.Image) -> str:
 
 # ====================== UI ======================
 st.title("🖤 Uncensored Grok Chatbot")
-st.caption("Grok-4.3 • Vision • Streaming • No Limits")
+st.caption("Grok-4 • Vision • Streaming • No Limits")
 
 with st.sidebar:
     if st.button("🗑️ Clear Chat"):
