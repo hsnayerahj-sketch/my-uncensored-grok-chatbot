@@ -1,5 +1,5 @@
-streamlit>=1.38.0
-python-dotenv
-langchain-groq
-requests
+streamlit
+replicate
 Pillow
+requests
+groq
