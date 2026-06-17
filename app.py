@@ -1,4 +1,3 @@
-
 import streamlit as st
 from PIL import Image
 import base64
@@ -7,14 +6,14 @@ import os
 
 st.set_page_config(page_title="Uncensored Chatbot", page_icon="🖤", layout="centered")
 
-@st.cache_resource(show_spinner="Loading Llama 3.1 via Groq...")
+@st.cache_resource(show_spinner="Loading Llama 3.1 via Groq (free)...")
 def load_model():
     from langchain_groq import ChatGroq
     
     api_key = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
     
     if not api_key:
-        st.error("GROQ_API_KEY is missing in Secrets!")
+        st.error("❌ GROQ_API_KEY is missing. Please add it in Streamlit Secrets.")
         st.stop()
     
     return ChatGroq(
@@ -22,7 +21,7 @@ def load_model():
         temperature=0.85,
         max_tokens=2048,
         streaming=True,
-        groq_api_key=api_key,   # Using your key
+        groq_api_key=api_key,
     )
 
 model = load_model()
