@@ -51,7 +51,7 @@ def generate_image_hf(prompt: str, num_images: int = 1):
         st.code("""
 # .streamlit/secrets.toml
 HF_TOKEN = "hf_your_token_here"   # huggingface.co → Settings → Access Tokens
-GROQ_API_KEY = "your_groq_key_here"
+GROQ_API_KEY = "GROQ_API_KEY = "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"
 """)
         return
 
